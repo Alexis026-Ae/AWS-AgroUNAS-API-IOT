@@ -1,0 +1,17 @@
+# Terrform y providers (pesadísimos)
+terraform/
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Git y otros
+.git/
+.gitignore
+
+# Archivos locales que no necesitas en la imagen
+.env
+*.log

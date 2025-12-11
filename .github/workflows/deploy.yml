@@ -1,0 +1,68 @@
+name: CI-CD IOT API
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    # 1. Clonar el repositorio
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    # 2. Instalar Python
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.12"
+
+    # 3. Instalar dependencias
+    - name: Install dependencies
+      run: |
+        pip install -r app/requirements.txt
+        pip install pytest
+
+    # 4. Ejecutar pruebas
+    - name: Run Tests
+      run: pytest --maxfail=1 --disable-warnings
+
+    # 5. Configurar AWS
+    - name: Configure AWS
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    # 6. Login en ECR
+    - name: Login to ECR
+      uses: aws-actions/amazon-ecr-login@v1
+
+    # 7. Build imagen Docker
+    - name: Build Docker image
+      run: |
+        docker build -t ${{ secrets.ECR_REPOSITORY }}:latest ./app
+
+    # 8. Push a ECR
+    - name: Push to ECR
+      run: |
+        IMAGE_URI=$(aws ecr describe-repositories --repository-names ${{ secrets.ECR_REPOSITORY }} --query "repositories[0].repositoryUri" --output text)
+        docker tag ${{ secrets.ECR_REPOSITORY }}:latest $IMAGE_URI:latest
+        docker push $IMAGE_URI:latest
+
+    # 9. Instalar Terraform
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+
+    # 10. Terraform Init y Apply
+    - name: Terraform Init
+      working-directory: ./app/terraform
+      run: terraform init -input=false
+
+#    - name: Terraform Apply
+#      working-directory: ./app/terraform
+#      run: terraform apply -auto-approve -input=false

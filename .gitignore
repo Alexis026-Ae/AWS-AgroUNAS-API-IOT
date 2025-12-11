@@ -1,0 +1,21 @@
+# Terraform directories
+**/.terraform/
+**/.terraform/*
+app/terraform/aws/
+
+# Terraform state
+*.tfstate
+*.tfstate.*
+
+# Python cache
+__pycache__/
+*.db
+
+# Virtual environments
+venv/
+.env
+
+# Binarios grandes o compilados
+*.exe
+*.zip
+*.tar
