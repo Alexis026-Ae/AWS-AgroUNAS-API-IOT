@@ -59,6 +59,11 @@ jobs:
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v2
 
+    - name: Export Terraform DB variables
+      run: |
+        echo "TF_VAR_db_username=${{ secrets.TF_VAR_DB_USERNAME }}" >> $GITHUB_ENV
+        echo "TF_VAR_db_password=${{ secrets.TF_VAR_DB_PASSWORD }}" >> $GITHUB_ENV
+
     # 10. Terraform Init y Apply
     - name: Terraform Init
       working-directory: ./app/terraform
