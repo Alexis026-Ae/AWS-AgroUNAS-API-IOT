@@ -30,6 +30,7 @@ jobs:
     - name: Run Tests
       run: pytest --maxfail=1 --disable-warnings
 
+
     # 5. Configurar AWS
     - name: Configure AWS
       uses: aws-actions/configure-aws-credentials@v2
