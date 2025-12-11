@@ -16,16 +16,26 @@ DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_NAME = os.getenv("DB_NAME", "iot_suelo")
 DB_PORT = os.getenv("DB_PORT", "5432")
 
-if DB_HOST == "sqlite":
+# Detectar si estamos corriendo en GitHub Actions para usar SQLite
+USE_SQLITE_FOR_TESTS = os.getenv("GITHUB_ACTIONS") == "true"
+
+# ----- CONFIG BD -----
+if USE_SQLITE_FOR_TESTS:
+    # Base en memoria (solo existe durante el test)
     SQLALCHEMY_DATABASE_URL = "sqlite://"
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+    )
 else:
+    # Base real PostgreSQL para producción
     SQLALCHEMY_DATABASE_URL = (
         f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
+    engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
 
 def get_db():
     db = SessionLocal()
@@ -33,6 +43,7 @@ def get_db():
         yield db
     finally:
         db.close()
+
 
 # 2. MODELO BD
 class SensorRegistro(Base):
@@ -46,10 +57,13 @@ class SensorRegistro(Base):
     humedad = Column(Float, nullable=False)
     creado_en = Column(DateTime, default=datetime.utcnow)
 
+
+# Solo crear tablas en producción o SQLite
 try:
     Base.metadata.create_all(bind=engine)
 except Exception as e:
-    print(f"Error conectando a BD (esperable durante el build de docker): {e}")
+    print(f"⚠ Error conectando a BD (esperable en CI/CD): {e}")
+
 
 # 3. ESQUEMAS PYDANTIC
 class SensorCreate(BaseModel):
@@ -60,6 +74,7 @@ class SensorCreate(BaseModel):
     ph: float
     humedad: float
 
+
 class SensorRead(SensorCreate):
     id: int
     creado_en: datetime
@@ -67,30 +82,31 @@ class SensorRead(SensorCreate):
     class Config:
         from_attributes = True
 
-# 4. LÓGICA DE NEGOCIO (para tabla de decisión)
+
+# 4. LÓGICA DE NEGOCIO
 def validar_sensor(datos: SensorCreate) -> list[str]:
     errores = []
 
-    # C1: Nutrientes no negativos
     if datos.nitrogeno < 0 or datos.fosforo < 0 or datos.potasio < 0:
         errores.append("N, P y K deben ser >= 0")
 
-    # C2: pH válido
     if not (0 <= datos.ph <= 14):
         errores.append("pH debe estar entre 0 y 14")
 
-    # C3: Humedad válida
     if not (0 <= datos.humedad <= 100):
         errores.append("Humedad debe estar entre 0 y 100")
 
     return errores
 
+
 # 5. FASTAPI
 app = FastAPI(title="API Sensores IoT")
+
 
 @app.get("/")
 def root():
     return {"mensaje": "API funcionando correctamente en EKS 🚀"}
+
 
 @app.post("/sensores", response_model=SensorRead)
 def crear_registro(datos: SensorCreate, db: Session = Depends(get_db)):
@@ -103,6 +119,7 @@ def crear_registro(datos: SensorCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(registro)
     return registro
+
 
 @app.get("/sensores", response_model=list[SensorRead])
 def listar_registros(db: Session = Depends(get_db)):
