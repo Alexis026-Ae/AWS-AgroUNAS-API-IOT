@@ -63,6 +63,6 @@ jobs:
       working-directory: ./app/terraform
       run: terraform init -input=false
 
-#    - name: Terraform Apply
-#      working-directory: ./app/terraform
-#      run: terraform apply -auto-approve -input=false
+    - name: Terraform Apply -auto-approve
+      working-directory: ./app/terraform
+      run: terraform apply -auto-approve -input=false
