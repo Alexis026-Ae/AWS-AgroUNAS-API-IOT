@@ -16,9 +16,12 @@ DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_NAME = os.getenv("DB_NAME", "iot_suelo")
 DB_PORT = os.getenv("DB_PORT", "5432")
 
-SQLALCHEMY_DATABASE_URL = (
-    f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-)
+if DB_HOST == "sqlite":
+    SQLALCHEMY_DATABASE_URL = "sqlite://"
+else:
+    SQLALCHEMY_DATABASE_URL = (
+        f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
